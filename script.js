@@ -1,73 +1,69 @@
 /**
- * ==========================================================================
- * CivicConnect - Vanilla JavaScript Logic
- * ==========================================================================
- * Handles:
- * - Registration
- * - Login
- * - Complaint submission
- * - Mandatory photo evidence
- * - Photo preview
- * - Complaint storage
- * - Authority complaint display
- * - Status workflow
- * - Presentation animations
+ * ================================================================
+ * CivicConnect - Presentation Demo JavaScript
+ * ================================================================
  *
- * IMPORTANT:
- * - No device location is used.
- * - No navigator.geolocation is used.
- * - No EXIF metadata is read.
- * - No GPS metadata is extracted.
- * - Uploaded photo is treated only as visual evidence.
- * ==========================================================================
+ * Demo architecture:
+ *   Register → Login → Complaint → Submit → Success
+ *                                      ↓
+ *                              Authority page
+ *                              opened manually
+ *
+ * Storage:
+ *   Browser localStorage only
+ *
+ * Privacy:
+ *   Authority view does NOT display citizen personal information.
+ *
+ * Photo:
+ *   Mandatory evidence upload.
+ *   No device location is requested.
+ *   No EXIF/GPS metadata is read or inspected.
+ * ================================================================
  */
 
 
-/* ==========================================================================
-   1. DATA STORE HELPERS
-   ========================================================================== */
-
+/* ================================================================
+   1. LOCAL STORAGE HELPERS
+   ================================================================ */
 
 /**
- * Retrieve registered citizen data
+ * Retrieve registered citizen.
  */
 function getUser() {
   try {
-    const raw = localStorage.getItem("civicUser");
+    const raw = localStorage.getItem('civicUser');
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
-    console.error("Error reading civicUser:", err);
+    console.error('Error reading civicUser:', err);
     return null;
   }
 }
 
 
 /**
- * Save citizen data
+ * Save citizen locally.
  */
 function saveUser(user) {
   try {
-    localStorage.setItem("civicUser", JSON.stringify(user));
+    localStorage.setItem('civicUser', JSON.stringify(user));
+    return true;
   } catch (err) {
-    console.error("Error saving civicUser:", err);
+    console.error('Error saving civicUser:', err);
+    return false;
   }
 }
 
 
 /**
- * Retrieve active complaint.
+ * Retrieve saved complaint.
  *
- * Complaint information is stored in:
- * civicComplaint
- *
- * Photo is stored separately in:
- * civicComplaintPhoto
- *
- * This avoids losing the complete complaint if the image is large.
+ * The complaint record is stored separately from the photo
+ * to reduce localStorage pressure.
  */
 function getComplaint() {
   try {
-    const raw = localStorage.getItem("civicComplaint");
+    const raw = localStorage.getItem('civicComplaint');
 
     if (!raw) {
       return null;
@@ -75,100 +71,72 @@ function getComplaint() {
 
     const complaint = JSON.parse(raw);
 
-    /*
-     * Restore photo from separate storage.
-     */
-    const savedPhoto = localStorage.getItem("civicComplaintPhoto");
-    const savedPhotoName = localStorage.getItem("civicComplaintPhotoName");
+    // Restore photo stored separately.
+    const storedPhoto = localStorage.getItem('civicComplaintPhoto');
+    const storedPhotoName = localStorage.getItem(
+      'civicComplaintPhotoName'
+    );
 
-    if (!complaint.photo && savedPhoto) {
-      complaint.photo = savedPhoto;
+    if (!complaint.photo && storedPhoto) {
+      complaint.photo = storedPhoto;
     }
 
-    if (!complaint.photoName && savedPhotoName) {
-      complaint.photoName = savedPhotoName;
+    if (!complaint.photoName && storedPhotoName) {
+      complaint.photoName = storedPhotoName;
     }
 
     return complaint;
 
   } catch (err) {
-    console.error("Error reading civicComplaint:", err);
+    console.error('Error reading civicComplaint:', err);
     return null;
   }
 }
 
 
 /**
- * Save complaint.
- *
- * Complaint data and photo are stored separately.
+ * Save complaint record and photo separately.
  */
 function saveComplaint(complaint) {
-
   try {
 
-    const photo = complaint.photo || null;
-
-    const photoName =
-      complaint.photoName ||
-      "geotagged_evidence.jpg";
-
-
-    /*
-     * Create a clean complaint object without image data.
-     */
     const complaintRecord = {
       ...complaint
     };
 
+    // Remove large photo from main JSON record.
     delete complaintRecord.photo;
     delete complaintRecord.photoName;
 
-
-    /*
-     * Save complaint details.
-     */
     localStorage.setItem(
-      "civicComplaint",
+      'civicComplaint',
       JSON.stringify(complaintRecord)
     );
 
-
-    /*
-     * Save actual image separately.
-     */
-    if (photo) {
-
+    // Store photo separately.
+    if (complaint.photo) {
       localStorage.setItem(
-        "civicComplaintPhoto",
-        photo
+        'civicComplaintPhoto',
+        complaint.photo
       );
-
-      localStorage.setItem(
-        "civicComplaintPhotoName",
-        photoName
-      );
-
     } else {
-
-      localStorage.removeItem(
-        "civicComplaintPhoto"
-      );
-
-      localStorage.removeItem(
-        "civicComplaintPhotoName"
-      );
+      localStorage.removeItem('civicComplaintPhoto');
     }
 
+    if (complaint.photoName) {
+      localStorage.setItem(
+        'civicComplaintPhotoName',
+        complaint.photoName
+      );
+    } else {
+      localStorage.removeItem('civicComplaintPhotoName');
+    }
 
     return true;
 
   } catch (err) {
 
-    console.error(
-      "Error saving CivicConnect complaint/photo:",
-      err
-    );
+    console.error('Error saving civicComplaint:', err);
 
     return false;
   }
@@ -176,256 +144,175 @@ function saveComplaint(complaint) {
 
 
 /**
- * Check login state
+ * Check login status.
  */
 function isLoggedIn() {
-
-  return (
-    localStorage.getItem(
-      "civicLoggedIn"
-    ) === "true"
-  );
-
+  return localStorage.getItem('civicLoggedIn') === 'true';
 }
 
 
-/* ==========================================================================
-   2. LOADER / UI HELPERS
-   ========================================================================== */
+/* ================================================================
+   2. PAGE LOADER
+   ================================================================ */
 
 
 /**
- * Show full-screen loader
+ * Show CivicConnect page loader.
  */
 function showPageLoader(
-  title = "Loading CivicConnect...",
-  subtitle = "Secure Public Grievance Portal"
+  title = 'Loading CivicConnect...',
+  subtitle = 'Secure Public Grievance Portal'
 ) {
 
-  const loader =
-    document.getElementById(
-      "page-loader"
-    );
-
-  const titleEl =
-    document.getElementById(
-      "loader-title"
-    );
-
-  const subtitleEl =
-    document.getElementById(
-      "loader-subtitle"
-    );
-
+  const loader = document.getElementById('page-loader');
+  const titleEl = document.getElementById('loader-title');
+  const subtitleEl = document.getElementById('loader-subtitle');
 
   if (titleEl && title) {
     titleEl.textContent = title;
   }
 
-
   if (subtitleEl && subtitle) {
     subtitleEl.textContent = subtitle;
   }
 
-
   if (loader) {
-    loader.classList.remove(
-      "loader-hidden"
-    );
+    loader.classList.remove('loader-hidden');
   }
-
 }
 
 
 /**
- * Hide loader
+ * Hide CivicConnect loader.
  */
 function hidePageLoader() {
 
-  const loader =
-    document.getElementById(
-      "page-loader"
-    );
+  const loader = document.getElementById('page-loader');
 
   if (loader) {
-
-    loader.classList.add(
-      "loader-hidden"
-    );
-
+    loader.classList.add('loader-hidden');
   }
-
 }
 
 
+/* ================================================================
+   3. UI MESSAGE HELPERS
+   ================================================================ */
+
+
 /**
- * Show alert message
+ * Display form message.
  */
 function showMessage(
   elementId,
   message,
-  type = "error"
+  type = 'error'
 ) {
 
-  const el =
-    document.getElementById(
-      elementId
-    );
+  const el = document.getElementById(elementId);
 
-  if (!el) return;
-
-
-  el.className =
-    "alert-box";
-
-
-  if (type === "error") {
-
-    el.classList.add(
-      "alert-error"
-    );
-
+  if (!el) {
+    return;
   }
 
-  else if (type === "success") {
+  el.className = 'alert-box';
 
-    el.classList.add(
-      "alert-success"
-    );
-
+  if (type === 'error') {
+    el.classList.add('alert-error');
   }
 
-  else if (type === "warning") {
-
-    el.classList.add(
-      "alert-warning"
-    );
-
+  if (type === 'success') {
+    el.classList.add('alert-success');
   }
 
-
-  let icon = "●";
-
-
-  if (type === "error") {
-    icon = "⚠";
+  if (type === 'warning') {
+    el.classList.add('alert-warning');
   }
 
-  if (type === "success") {
-    icon = "✓";
+  let icon = '●';
+
+  if (type === 'error') {
+    icon = '⚠';
   }
 
-  if (type === "warning") {
-    icon = "ℹ";
+  if (type === 'success') {
+    icon = '✓';
   }
 
+  if (type === 'warning') {
+    icon = 'ℹ';
+  }
 
-  el.innerHTML =
-    `<span>
+  el.innerHTML = `
+    <span>
       <strong>${icon}</strong>
       ${message}
-    </span>`;
+    </span>
+  `;
 
-
-  el.classList.remove(
-    "hidden"
-  );
-
+  el.classList.remove('hidden');
 }
 
 
 /**
- * Safely update text
+ * Safely set text.
  */
-function setText(
-  id,
-  text
-) {
+function setText(id, text) {
 
-  const el =
-    document.getElementById(
-      id
-    );
+  const el = document.getElementById(id);
 
   if (el) {
-
-    el.textContent =
-      text || "—";
-
+    el.textContent = text || '—';
   }
-
 }
 
 
 /**
- * Authority toast
+ * Authority toast notification.
  */
 function showAuthorityToast(message) {
 
-  let toast =
-    document.getElementById(
-      "authority-toast"
-    );
-
+  let toast = document.getElementById(
+    'authority-toast'
+  );
 
   if (!toast) {
 
-    toast =
-      document.createElement(
-        "div"
-      );
+    toast = document.createElement('div');
 
-    toast.id =
-      "authority-toast";
+    toast.id = 'authority-toast';
 
-    toast.className =
-      "toast-notice";
+    toast.className = 'toast-notice';
 
-    document.body.appendChild(
-      toast
-    );
-
+    document.body.appendChild(toast);
   }
 
+  toast.innerHTML = `
+    <span class="toast-icon">✓</span>
+    <span>${message}</span>
+  `;
 
-  toast.innerHTML =
-    `<span class="toast-icon">✓</span>
-     <span>${message}</span>`;
-
-
-  toast.classList.add(
-    "toast-show"
-  );
-
+  toast.classList.add('toast-show');
 
   if (window.toastTimeout) {
-
-    clearTimeout(
-      window.toastTimeout
-    );
-
+    clearTimeout(window.toastTimeout);
   }
 
+  window.toastTimeout = setTimeout(() => {
 
-  window.toastTimeout =
-    setTimeout(() => {
+    toast.classList.remove('toast-show');
 
-      toast.classList.remove(
-        "toast-show"
-      );
-
-    }, 3500);
-
+  }, 3500);
 }
 
 
-/* ==========================================================================
-   3. REGISTRATION
-   ========================================================================== */
+/* ================================================================
+   4. REGISTRATION
+   ================================================================ */
 
 
 /**
- * Register citizen
+ * Handle citizen registration.
  */
 function registerUser(e) {
 
@@ -433,85 +320,66 @@ function registerUser(e) {
     e.preventDefault();
   }
 
-
   const fullNameInput =
-    document.getElementById(
-      "fullName"
-    );
+    document.getElementById('fullName');
 
   const mobileInput =
-    document.getElementById(
-      "mobile"
-    );
+    document.getElementById('mobile');
 
   const aadhaarInput =
-    document.getElementById(
-      "aadhaar"
-    );
+    document.getElementById('aadhaar');
 
   const emailInput =
-    document.getElementById(
-      "email"
-    );
+    document.getElementById('email');
 
   const passwordInput =
-    document.getElementById(
-      "password"
-    );
+    document.getElementById('password');
 
   const confirmPasswordInput =
-    document.getElementById(
-      "confirmPassword"
-    );
+    document.getElementById('confirmPassword');
 
 
   const fullName =
     fullNameInput
       ? fullNameInput.value.trim()
-      : "";
-
+      : '';
 
   const mobile =
     mobileInput
       ? mobileInput.value.trim()
-      : "";
-
+      : '';
 
   const aadhaar =
     aadhaarInput
       ? aadhaarInput.value
           .trim()
-          .replace(/\s+/g, "")
-      : "";
-
+          .replace(/\s+/g, '')
+      : '';
 
   const email =
     emailInput
       ? emailInput.value.trim()
-      : "";
-
+      : '';
 
   const password =
     passwordInput
       ? passwordInput.value
-      : "";
-
+      : '';
 
   const confirmPassword =
     confirmPasswordInput
       ? confirmPasswordInput.value
-      : "";
+      : '';
 
 
-  if (
-    !fullName ||
-    fullName.length < 3
-  ) {
+  /* Full name */
+
+  if (!fullName || fullName.length < 3) {
 
     showMessage(
-      "register-alert",
-      "Full Name must be at least 3 characters.",
-      "error"
+      'register-alert',
+      'Full Name must be at least 3 characters.',
+      'error'
     );
 
     if (fullNameInput) {
@@ -522,16 +390,16 @@ function registerUser(e) {
   }
 
 
-  const mobileRegex =
-    /^[0-9]{10}$/;
+  /* Mobile */
 
+  const mobileRegex = /^[0-9]{10}$/;
 
   if (!mobileRegex.test(mobile)) {
 
     showMessage(
-      "register-alert",
-      "Mobile Number must be exactly 10 digits.",
-      "error"
+      'register-alert',
+      'Mobile Number must be exactly 10 digits.',
+      'error'
     );
 
     if (mobileInput) {
@@ -542,16 +410,16 @@ function registerUser(e) {
   }
 
 
-  const aadhaarRegex =
-    /^[0-9]{12}$/;
+  /* Aadhaar */
 
+  const aadhaarRegex = /^[0-9]{12}$/;
 
   if (!aadhaarRegex.test(aadhaar)) {
 
     showMessage(
-      "register-alert",
-      "Aadhaar Number must be exactly 12 digits.",
-      "error"
+      'register-alert',
+      'Aadhaar Number must be exactly 12 digits.',
+      'error'
     );
 
     if (aadhaarInput) {
@@ -562,16 +430,17 @@ function registerUser(e) {
   }
 
 
+  /* Email */
+
   const emailRegex =
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 
   if (!emailRegex.test(email)) {
 
     showMessage(
-      "register-alert",
-      "Please enter a valid email address.",
-      "error"
+      'register-alert',
+      'Please enter a valid email address.',
+      'error'
     );
 
     if (emailInput) {
@@ -582,15 +451,14 @@ function registerUser(e) {
   }
 
 
-  if (
-    !password ||
-    password.length < 8
-  ) {
+  /* Password */
+
+  if (!password || password.length < 8) {
 
     showMessage(
-      "register-alert",
-      "Password must be at least 8 characters.",
-      "error"
+      'register-alert',
+      'Password must be at least 8 characters.',
+      'error'
     );
 
     if (passwordInput) {
@@ -601,15 +469,14 @@ function registerUser(e) {
   }
 
 
-  if (
-    password !==
-    confirmPassword
-  ) {
+  /* Confirm password */
+
+  if (password !== confirmPassword) {
 
     showMessage(
-      "register-alert",
-      "Password and Confirm Password do not match.",
-      "error"
+      'register-alert',
+      'Password and Confirm Password do not match.',
+      'error'
     );
 
     if (confirmPasswordInput) {
@@ -619,6 +486,8 @@ function registerUser(e) {
     return;
   }
 
+
+  /* Save user */
 
   const userData = {
 
@@ -631,41 +500,49 @@ function registerUser(e) {
   };
 
 
-  saveUser(
-    userData
-  );
+  const saved = saveUser(userData);
+
+  if (!saved) {
+
+    showMessage(
+      'register-alert',
+      'Unable to save registration data in this browser.',
+      'error'
+    );
+
+    return;
+  }
 
 
   showMessage(
-    "register-alert",
-    "Registration successful! Preparing your portal access...",
-    "success"
+    'register-alert',
+    'Registration successful! Preparing your portal access...',
+    'success'
   );
 
 
   showPageLoader(
-    "Registering Citizen...",
-    "Provisioning citizen access..."
+    'Registering Citizen...',
+    'Preparing secure citizen access...'
   );
 
 
   setTimeout(() => {
 
     window.location.href =
-      "login.html";
+      'login.html';
 
   }, 1300);
-
 }
 
 
-/* ==========================================================================
-   4. LOGIN
-   ========================================================================== */
+/* ================================================================
+   5. LOGIN
+   ================================================================ */
 
 
 /**
- * Login citizen
+ * Handle citizen login.
  */
 function loginUser(e) {
 
@@ -675,43 +552,42 @@ function loginUser(e) {
 
 
   const emailInput =
-    document.getElementById(
-      "login-email"
-    );
+    document.getElementById('login-email');
 
   const passwordInput =
-    document.getElementById(
-      "login-password"
-    );
+    document.getElementById('login-password');
 
 
   const email =
     emailInput
       ? emailInput.value.trim()
-      : "";
-
+      : '';
 
   const password =
     passwordInput
       ? passwordInput.value
-      : "";
+      : '';
 
 
   const registeredUser =
     getUser();
 
 
+  /* Account check */
+
   if (!registeredUser) {
 
     showMessage(
-      "login-alert",
-      "No account found. Please register first.",
-      "error"
+      'login-alert',
+      'No account found. Please register first.',
+      'error'
     );
 
     return;
   }
 
+
+  /* Email check */
 
   if (
     registeredUser.email.toLowerCase() !==
@@ -719,9 +595,9 @@ function loginUser(e) {
   ) {
 
     showMessage(
-      "login-alert",
-      "Email address is not registered.",
-      "error"
+      'login-alert',
+      'Email address is not registered.',
+      'error'
     );
 
     if (emailInput) {
@@ -732,15 +608,17 @@ function loginUser(e) {
   }
 
 
+  /* Password check */
+
   if (
     registeredUser.password !==
     password
   ) {
 
     showMessage(
-      "login-alert",
-      "Incorrect password.",
-      "error"
+      'login-alert',
+      'Incorrect password.',
+      'error'
     );
 
     if (passwordInput) {
@@ -751,40 +629,44 @@ function loginUser(e) {
   }
 
 
+  /* Login success */
+
   localStorage.setItem(
-    "civicLoggedIn",
-    "true"
+    'civicLoggedIn',
+    'true'
   );
 
 
   showMessage(
-    "login-alert",
-    "Authentication verified. Welcome to CivicConnect.",
-    "success"
+    'login-alert',
+    'Authentication verified. Welcome to CivicConnect.',
+    'success'
   );
 
 
   showPageLoader(
-    "Authenticating...",
-    "Verifying citizen credentials..."
+    'Authenticating...',
+    'Loading citizen complaint portal...'
   );
 
 
   setTimeout(() => {
 
     window.location.href =
-      "complaint.html";
+      'complaint.html';
 
   }, 1000);
-
 }
 
 
-/* ==========================================================================
-   5. COMPLAINT + PHOTO
-   ========================================================================== */
+/* ================================================================
+   6. COMPLAINT ID
+   ================================================================ */
 
 
+/**
+ * Generate complaint ID.
+ */
 function generateComplaintId() {
 
   const year =
@@ -793,173 +675,169 @@ function generateComplaintId() {
   const randomNum =
     Math.floor(
       10000 +
-      Math.random() *
-      90000
+      Math.random() * 90000
     );
 
-
-  return (
-    `CC-${year}-${randomNum}`
-  );
-
+  return `CC-${year}-${randomNum}`;
 }
 
 
-/*
- * Current uploaded photo
- */
+/* ================================================================
+   7. PHOTO HANDLING
+   ================================================================ */
+
 let uploadedPhoto = null;
 
-
-/*
- * Uploaded photo filename
- */
 let uploadedPhotoName = null;
 
 
 /**
- * Compress image.
+ * Compress uploaded image.
  *
  * IMPORTANT:
- * This does NOT read EXIF metadata.
- * This does NOT read GPS.
- * This does NOT request location.
+ * - No navigator.geolocation.
+ * - No EXIF parsing.
+ * - No GPS extraction.
+ * - Photo is treated only as evidence.
  */
 function compressImage(
   file,
   callback
 ) {
 
+  if (!file) {
+    return;
+  }
+
+
   const reader =
     new FileReader();
 
 
-  reader.onload =
-    (e) => {
+  reader.onload = (e) => {
 
-      const img =
-        new Image();
-
-
-      img.onload =
-        () => {
-
-          const maxDim =
-            1000;
+    const img =
+      new Image();
 
 
-          let width =
-            img.width;
+    img.onload = () => {
 
-          let height =
-            img.height;
+      const maxDim = 1000;
 
+      let width =
+        img.width;
 
-          if (
-            width > maxDim ||
-            height > maxDim
-          ) {
-
-            if (
-              width > height
-            ) {
-
-              height =
-                Math.round(
-                  (
-                    height *
-                    maxDim
-                  ) / width
-                );
-
-              width =
-                maxDim;
-
-            } else {
-
-              width =
-                Math.round(
-                  (
-                    width *
-                    maxDim
-                  ) / height
-                );
-
-              height =
-                maxDim;
-
-            }
-
-          }
+      let height =
+        img.height;
 
 
-          const canvas =
-            document.createElement(
-              "canvas"
+      if (
+        width > maxDim ||
+        height > maxDim
+      ) {
+
+        if (width > height) {
+
+          height =
+            Math.round(
+              (height * maxDim) /
+              width
             );
 
+          width = maxDim;
 
-          canvas.width =
-            width;
+        } else {
 
-          canvas.height =
-            height;
-
-
-          const ctx =
-            canvas.getContext(
-              "2d"
+          width =
+            Math.round(
+              (width * maxDim) /
+              height
             );
 
-
-          ctx.drawImage(
-            img,
-            0,
-            0,
-            width,
-            height
-          );
+          height = maxDim;
+        }
+      }
 
 
-          const compressedDataUrl =
-            canvas.toDataURL(
-              "image/jpeg",
-              0.78
-            );
+      const canvas =
+        document.createElement('canvas');
+
+      canvas.width = width;
+
+      canvas.height = height;
 
 
-          callback(
-            compressedDataUrl
-          );
-
-        };
+      const ctx =
+        canvas.getContext('2d');
 
 
-      img.onerror =
-        () => {
+      if (!ctx) {
 
-          callback(
-            e.target.result
-          );
+        callback(
+          e.target.result
+        );
 
-        };
+        return;
+      }
 
 
-      img.src =
-        e.target.result;
+      ctx.drawImage(
+        img,
+        0,
+        0,
+        width,
+        height
+      );
 
+
+      const compressedDataUrl =
+        canvas.toDataURL(
+          'image/jpeg',
+          0.78
+        );
+
+
+      callback(
+        compressedDataUrl
+      );
     };
 
 
-  reader.readAsDataURL(
-    file
-  );
+    img.onerror = () => {
 
+      callback(
+        e.target.result
+      );
+    };
+
+
+    img.src =
+      e.target.result;
+  };
+
+
+  reader.onerror = () => {
+
+    console.error(
+      'Unable to read image file.'
+    );
+
+  };
+
+
+  reader.readAsDataURL(file);
 }
 
 
+/* ================================================================
+   8. DEMO FIELD PHOTO
+   ================================================================ */
+
+
 /**
- * Demo field image
+ * Generate demo field photo.
+ *
+ * This is only for presentation/demo use.
  */
 function createDemoCivicImage() {
 
@@ -1028,6 +906,8 @@ function createDemoCivicImage() {
     />
 
 
+    <!-- Road marking -->
+
     <line
       x1="0"
       y1="170"
@@ -1039,6 +919,8 @@ function createDemoCivicImage() {
       opacity="0.6"
     />
 
+
+    <!-- Pothole -->
 
     <ellipse
       cx="290"
@@ -1069,15 +951,15 @@ function createDemoCivicImage() {
     />
 
 
+    <!-- Cracks -->
+
     <path
       d="M 150 175
          L 180 190
          L 195 210
-
          M 410 185
          L 440 170
          L 460 180
-
          M 310 235
          L 325 260
          L 315 275"
@@ -1087,17 +969,17 @@ function createDemoCivicImage() {
     />
 
 
+    <!-- Warning cone -->
+
     <polygon
       points="460,250 490,250 475,175"
       fill="#EA580C"
     />
 
-
     <polygon
       points="467,215 483,215 479,195 471,195"
       fill="#FFFFFF"
     />
-
 
     <rect
       x="455"
@@ -1109,6 +991,8 @@ function createDemoCivicImage() {
     />
 
 
+    <!-- Badge -->
+
     <rect
       x="15"
       y="15"
@@ -1117,7 +1001,6 @@ function createDemoCivicImage() {
       rx="6"
       fill="rgba(7,18,38,0.85)"
     />
-
 
     <text
       x="25"
@@ -1135,188 +1018,176 @@ function createDemoCivicImage() {
 
 
   return (
-    "data:image/svg+xml;charset=utf-8," +
+    'data:image/svg+xml;charset=utf-8,' +
     encodeURIComponent(svg)
   );
-
 }
 
 
+/* ================================================================
+   9. PHOTO PREVIEW
+   ================================================================ */
+
+
 /**
- * Display selected photo
+ * Display selected photo.
  */
 function displayUploadedPhoto(
   photoUrl,
-  fileName = "geotagged_evidence.jpg"
+  fileName = 'geotagged_evidence.jpg'
 ) {
 
   const dropzone =
     document.getElementById(
-      "geotag-dropzone"
+      'geotag-dropzone'
     );
 
   const previewCard =
     document.getElementById(
-      "geotag-preview-card"
+      'geotag-preview-card'
     );
 
   const previewImg =
     document.getElementById(
-      "geotag-image-preview"
+      'geotag-image-preview'
     );
 
   const nameLabel =
     document.getElementById(
-      "photo-filename-label"
+      'photo-filename-label'
     );
 
 
   if (previewImg) {
-
     previewImg.src =
       photoUrl;
-
   }
 
 
   if (nameLabel) {
-
     nameLabel.textContent =
       fileName;
-
   }
 
 
   uploadedPhoto =
     photoUrl;
 
-
   uploadedPhotoName =
     fileName;
 
 
   if (dropzone) {
-
     dropzone.style.display =
-      "none";
-
+      'none';
   }
 
 
   if (previewCard) {
-
     previewCard.classList.remove(
-      "hidden"
+      'hidden'
     );
-
   }
-
 }
 
 
 /**
- * Clear selected photo
+ * Remove selected photo.
  */
 function clearUploadedPhoto() {
 
-  uploadedPhoto =
-    null;
+  uploadedPhoto = null;
 
-  uploadedPhotoName =
-    null;
+  uploadedPhotoName = null;
 
 
   const dropzone =
     document.getElementById(
-      "geotag-dropzone"
+      'geotag-dropzone'
     );
 
   const previewCard =
     document.getElementById(
-      "geotag-preview-card"
+      'geotag-preview-card'
     );
 
   const previewImg =
     document.getElementById(
-      "geotag-image-preview"
+      'geotag-image-preview'
     );
 
   const fileInput =
     document.getElementById(
-      "complaint-photo-input"
+      'complaint-photo-input'
     );
 
 
   if (previewImg) {
-
-    previewImg.src =
-      "";
-
+    previewImg.src = '';
   }
 
 
   if (fileInput) {
-
-    fileInput.value =
-      "";
-
+    fileInput.value = '';
   }
 
 
   if (dropzone) {
-
     dropzone.style.display =
-      "flex";
-
+      'flex';
   }
 
 
   if (previewCard) {
-
     previewCard.classList.add(
-      "hidden"
+      'hidden'
     );
-
   }
-
 }
 
 
+/* ================================================================
+   10. PHOTO SECTION INITIALIZATION
+   ================================================================ */
+
+
 /**
- * Initialize photo upload
+ * Initialize photo upload section.
  */
 function initGeotagPhotoSection() {
 
   const browseBtn =
     document.getElementById(
-      "btn-browse-photo"
+      'btn-browse-photo'
     );
 
   const replaceBtn =
     document.getElementById(
-      "btn-replace-photo"
+      'btn-replace-photo'
     );
 
   const sampleBtn =
     document.getElementById(
-      "btn-sample-photo"
+      'btn-sample-photo'
     );
 
   const removeBtn =
     document.getElementById(
-      "btn-remove-photo"
+      'btn-remove-photo'
     );
 
   const fileInput =
     document.getElementById(
-      "complaint-photo-input"
+      'complaint-photo-input'
     );
 
   const dropzone =
     document.getElementById(
-      "geotag-dropzone"
+      'geotag-dropzone'
     );
 
+
+  /* Browse */
 
   if (
     browseBtn &&
@@ -1324,7 +1195,7 @@ function initGeotagPhotoSection() {
   ) {
 
     browseBtn.addEventListener(
-      "click",
+      'click',
       (e) => {
 
         e.stopPropagation();
@@ -1333,9 +1204,10 @@ function initGeotagPhotoSection() {
 
       }
     );
-
   }
 
+
+  /* Replace */
 
   if (
     replaceBtn &&
@@ -1343,7 +1215,7 @@ function initGeotagPhotoSection() {
   ) {
 
     replaceBtn.addEventListener(
-      "click",
+      'click',
       (e) => {
 
         e.stopPropagation();
@@ -1352,39 +1224,35 @@ function initGeotagPhotoSection() {
 
       }
     );
-
   }
 
 
-  /*
-   * Demo image button
-   */
+  /* Demo photo */
+
   if (sampleBtn) {
 
     sampleBtn.addEventListener(
-      "click",
+      'click',
       (e) => {
 
         e.stopPropagation();
 
         displayUploadedPhoto(
           createDemoCivicImage(),
-          "field_defect_geotagged.jpg"
+          'field_defect_geotagged.jpg'
         );
 
       }
     );
-
   }
 
 
-  /*
-   * Remove photo
-   */
+  /* Remove */
+
   if (removeBtn) {
 
     removeBtn.addEventListener(
-      "click",
+      'click',
       (e) => {
 
         e.preventDefault();
@@ -1393,17 +1261,15 @@ function initGeotagPhotoSection() {
 
       }
     );
-
   }
 
 
-  /*
-   * Normal file selection
-   */
+  /* File selection */
+
   if (fileInput) {
 
     fileInput.addEventListener(
-      "change",
+      'change',
       () => {
 
         if (
@@ -1414,26 +1280,6 @@ function initGeotagPhotoSection() {
           const file =
             fileInput.files[0];
 
-
-          if (
-            !file.type.startsWith(
-              "image/"
-            )
-          ) {
-
-            showMessage(
-              "complaint-alert",
-              "Please select an image file.",
-              "error"
-            );
-
-            fileInput.value =
-              "";
-
-            return;
-          }
-
-
           compressImage(
             file,
             (compressedDataUrl) => {
@@ -1445,25 +1291,21 @@ function initGeotagPhotoSection() {
 
             }
           );
-
         }
-
       }
     );
-
   }
 
 
-  /*
-   * Drag & Drop
-   */
+  /* Click dropzone */
+
   if (
     dropzone &&
     fileInput
   ) {
 
     dropzone.addEventListener(
-      "click",
+      'click',
       () => {
 
         fileInput.click();
@@ -1472,11 +1314,13 @@ function initGeotagPhotoSection() {
     );
 
 
+    /* Drag enter */
+
     [
-      "dragenter",
-      "dragover"
+      'dragenter',
+      'dragover'
     ].forEach(
-      (eventName) => {
+      eventName => {
 
         dropzone.addEventListener(
           eventName,
@@ -1485,21 +1329,24 @@ function initGeotagPhotoSection() {
             e.preventDefault();
 
             dropzone.classList.add(
-              "dragover"
+              'dragover'
             );
 
-          }
+          },
+          false
         );
 
       }
     );
 
 
+    /* Drag leave */
+
     [
-      "dragleave",
-      "drop"
+      'dragleave',
+      'drop'
     ].forEach(
-      (eventName) => {
+      eventName => {
 
         dropzone.addEventListener(
           eventName,
@@ -1508,91 +1355,76 @@ function initGeotagPhotoSection() {
             e.preventDefault();
 
             dropzone.classList.remove(
-              "dragover"
+              'dragover'
             );
 
-          }
+          },
+          false
         );
 
       }
     );
 
 
+    /* Drop */
+
     dropzone.addEventListener(
-      "drop",
+      'drop',
       (e) => {
 
-        const files =
-          e.dataTransfer.files;
+        const dt =
+          e.dataTransfer;
 
+        const files =
+          dt.files;
 
         if (
           files &&
           files[0]
         ) {
 
-          const file =
-            files[0];
-
-
-          if (
-            !file.type.startsWith(
-              "image/"
-            )
-          ) {
-
-            showMessage(
-              "complaint-alert",
-              "Please drop an image file.",
-              "error"
-            );
-
-            return;
-          }
-
-
           compressImage(
-            file,
+            files[0],
             (compressedDataUrl) => {
 
               displayUploadedPhoto(
                 compressedDataUrl,
-                file.name
+                files[0].name
               );
 
             }
           );
-
         }
-
       }
     );
-
   }
-
 }
 
 
+/* ================================================================
+   11. DATE/TIME
+   ================================================================ */
+
+
 /**
- * Format date/time
+ * Format current date/time.
  */
 function formatCurrentDateTime() {
 
   const now =
     new Date();
 
-
   const options = {
 
-    day: "2-digit",
+    day: '2-digit',
 
-    month: "short",
+    month: 'short',
 
-    year: "numeric",
+    year: 'numeric',
 
-    hour: "2-digit",
+    hour: '2-digit',
 
-    minute: "2-digit",
+    minute: '2-digit',
 
     hour12: true
 
@@ -1600,18 +1432,34 @@ function formatCurrentDateTime() {
 
 
   return now.toLocaleString(
-    "en-IN",
+    'en-IN',
     options
   );
-
 }
 
 
-/* ==========================================================================
-   6. SUBMIT COMPLAINT
-   ========================================================================== */
+/* ================================================================
+   12. SUBMIT COMPLAINT
+   ================================================================ */
 
 
+/**
+ * Handle complaint submission.
+ *
+ * IMPORTANT:
+ *
+ * After submission:
+ *
+ *     SUCCESS MESSAGE
+ *          ↓
+ *        STOP
+ *
+ * There is NO automatic redirect
+ * to authority.html.
+ *
+ * Authority page is opened manually
+ * during the presentation.
+ */
 function submitComplaint(e) {
 
   if (e) {
@@ -1621,69 +1469,64 @@ function submitComplaint(e) {
 
   const categoryInput =
     document.getElementById(
-      "complaint-category"
+      'complaint-category'
     );
 
   const priorityInput =
     document.getElementById(
-      "complaint-priority"
+      'complaint-priority'
     );
 
   const titleInput =
     document.getElementById(
-      "complaint-title"
+      'complaint-title'
     );
 
   const descInput =
     document.getElementById(
-      "complaint-description"
+      'complaint-description'
     );
 
   const locationInput =
     document.getElementById(
-      "complaint-location"
+      'complaint-location'
     );
 
 
   const category =
     categoryInput
       ? categoryInput.value.trim()
-      : "";
-
+      : '';
 
   const priority =
     priorityInput
       ? priorityInput.value.trim()
-      : "Medium";
-
+      : 'Medium';
 
   const title =
     titleInput
       ? titleInput.value.trim()
-      : "";
-
+      : '';
 
   const description =
     descInput
       ? descInput.value.trim()
-      : "";
-
+      : '';
 
   const location =
     locationInput
       ? locationInput.value.trim()
-      : "";
+      : '';
 
 
-  /*
-   * Category
-   */
+  /* Validation 1 */
+
   if (!category) {
 
     showMessage(
-      "complaint-alert",
-      "Please select a complaint category.",
-      "error"
+      'complaint-alert',
+      'Please select a complaint category.',
+      'error'
     );
 
     if (categoryInput) {
@@ -1694,18 +1537,17 @@ function submitComplaint(e) {
   }
 
 
-  /*
-   * Title
-   */
+  /* Validation 2 */
+
   if (
     !title ||
     title.length < 5
   ) {
 
     showMessage(
-      "complaint-alert",
-      "Complaint Title must be at least 5 characters.",
-      "error"
+      'complaint-alert',
+      'Complaint Title must be at least 5 characters.',
+      'error'
     );
 
     if (titleInput) {
@@ -1716,18 +1558,17 @@ function submitComplaint(e) {
   }
 
 
-  /*
-   * Description
-   */
+  /* Validation 3 */
+
   if (
     !description ||
     description.length < 10
   ) {
 
     showMessage(
-      "complaint-alert",
-      "Complaint Description must be at least 10 characters.",
-      "error"
+      'complaint-alert',
+      'Complaint Description must be at least 10 characters.',
+      'error'
     );
 
     if (descInput) {
@@ -1738,15 +1579,14 @@ function submitComplaint(e) {
   }
 
 
-  /*
-   * Location
-   */
+  /* Validation 4 */
+
   if (!location) {
 
     showMessage(
-      "complaint-alert",
-      "Please provide a valid location or landmark.",
-      "error"
+      'complaint-alert',
+      'Please provide a valid location or landmark.',
+      'error'
     );
 
     if (locationInput) {
@@ -1757,29 +1597,26 @@ function submitComplaint(e) {
   }
 
 
-  /*
-   * MANDATORY PHOTO
-   */
+  /* Validation 5 */
+
   if (!uploadedPhoto) {
 
     showMessage(
-      "complaint-alert",
-      "Geotagged photo evidence is required to submit this complaint.",
-      "error"
+      'complaint-alert',
+      'Geotagged photo evidence is required to submit this complaint.',
+      'error'
     );
-
 
     const dropzone =
       document.getElementById(
-        "geotag-dropzone"
+        'geotag-dropzone'
       );
-
 
     if (dropzone) {
 
       dropzone.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
+        behavior: 'smooth',
+        block: 'center'
       });
 
     }
@@ -1788,132 +1625,121 @@ function submitComplaint(e) {
   }
 
 
-  /*
-   * Generate complaint ID
-   */
+  /* Generate complaint ID */
+
   const complaintId =
     generateComplaintId();
 
+
+  /* Submission time */
 
   const submittedAt =
     formatCurrentDateTime();
 
 
-  /*
-   * Complaint object
-   */
+  /* Create complaint */
+
   const newComplaint = {
 
-    id:
-      complaintId,
+    id: complaintId,
 
-    category:
-      category,
+    category,
 
-    priority:
-      priority,
+    priority,
 
-    title:
-      title,
+    title,
 
-    description:
-      description,
+    description,
 
-    location:
-      location,
+    location,
 
-    submittedAt:
-      submittedAt,
+    submittedAt,
 
-    status:
-      "Assigned",
+    status: 'Assigned',
 
-    photo:
-      uploadedPhoto,
+    photo: uploadedPhoto,
 
     photoName:
       uploadedPhotoName ||
-      "geotagged_evidence.jpg"
+      'geotagged_evidence.jpg'
 
   };
 
 
-  /*
-   * SAVE
-   */
+  /* Save */
+
   const savedSuccessfully =
     saveComplaint(
       newComplaint
     );
 
 
-  /*
-   * Storage failed
-   */
   if (!savedSuccessfully) {
 
     showMessage(
-      "complaint-alert",
-      "Unable to save the complaint evidence. Please try a smaller image or clear browser storage and try again.",
-      "error"
+      'complaint-alert',
+      'Unable to save complaint. Please try again.',
+      'error'
     );
 
     return;
   }
 
 
-  /*
-   * Success
-   */
+  /* SUCCESS */
+
   showMessage(
-    "complaint-alert",
-    "Complaint submitted successfully!",
-    "success"
+    'complaint-alert',
+    `Complaint submitted successfully! Complaint ID: ${complaintId}`,
+    'success'
   );
+
+
+  /* Lock submit button */
+
+  const submitButton =
+    document.getElementById(
+      'btn-submit-complaint'
+    );
+
+
+  if (submitButton) {
+
+    submitButton.disabled =
+      true;
+
+    submitButton.innerHTML = `
+      <span>✓ Complaint Submitted</span>
+    `;
+
+  }
 
 
   /*
-   * Loading
+   * IMPORTANT:
+   *
+   * NO redirect here.
+   *
+   * The citizen remains on complaint.html.
+   *
+   * During presentation, authority.html
+   * will be opened manually.
    */
-  setTimeout(
-    () => {
-
-      showPageLoader(
-        "Sending complaint to authority...",
-        "Municipal dispatch in progress • Routing to Ward Nodal Officer"
-      );
-
-
-      setTimeout(
-        () => {
-
-          window.location.href =
-            "authority.html";
-
-        },
-        1200
-      );
-
-    },
-    400
-  );
-
 }
 
 
-/* ==========================================================================
-   7. AUTHORITY ACCESS
-   ========================================================================== */
+/* ================================================================
+   13. AUTHORITY PAGE PROTECTION
+   ================================================================ */
 
 
 /**
- * Protect authority page
+ * Protect authority page.
  */
 function protectAuthorityPage() {
 
   const loggedIn =
     isLoggedIn();
-
 
   const complaint =
     getComplaint();
@@ -1925,8 +1751,8 @@ function protectAuthorityPage() {
   ) {
 
     showPageLoader(
-      "Checking secure access...",
-      "Verifying session and grievance record..."
+      'Checking secure access...',
+      'No active grievance record found.'
     );
 
 
@@ -1934,7 +1760,7 @@ function protectAuthorityPage() {
       () => {
 
         window.location.href =
-          "login.html";
+          'login.html';
 
       },
       900
@@ -1946,21 +1772,27 @@ function protectAuthorityPage() {
 
 
   return true;
-
 }
 
 
+/* ================================================================
+   14. LOAD AUTHORITY COMPLAINT
+   ================================================================ */
+
+
 /**
- * Load authority complaint
+ * Load complaint into authority control room.
+ *
+ * PRIVACY:
+ * Citizen name, mobile, Aadhaar and email
+ * are intentionally NOT displayed.
  */
 function loadAuthorityComplaint() {
 
   if (
     !protectAuthorityPage()
   ) {
-
     return;
-
   }
 
 
@@ -1973,186 +1805,149 @@ function loadAuthorityComplaint() {
   }
 
 
-  /*
-   * Basic complaint data
-   */
+  /* Complaint metadata */
+
   setText(
-    "authority-complaint-id",
+    'authority-complaint-id',
     complaint.id
   );
 
-
   setText(
-    "authority-category",
+    'authority-category',
     complaint.category
   );
 
-
   setText(
-    "authority-priority",
+    'authority-priority',
     complaint.priority
   );
 
-
   setText(
-    "authority-title",
+    'authority-title',
     complaint.title
   );
 
-
   setText(
-    "authority-description",
+    'authority-description',
     complaint.description
   );
 
-
   setText(
-    "authority-location",
+    'authority-location',
     complaint.location
   );
 
-
   setText(
-    "authority-submitted-at",
+    'authority-submitted-at',
     complaint.submittedAt
   );
 
-
   setText(
-    "authority-status",
+    'authority-status',
     complaint.status
   );
 
 
-  /*
-   * Priority badge
-   */
+  /* Priority badge */
+
   const priorityEl =
     document.getElementById(
-      "authority-priority"
+      'authority-priority'
     );
 
 
   if (priorityEl) {
 
     priorityEl.className =
-      "badge";
+      'badge';
 
 
     const prioLower =
-      (
-        complaint.priority ||
-        ""
+      String(
+        complaint.priority || ''
       ).toLowerCase();
 
 
     if (
-      prioLower ===
-      "critical"
+      prioLower === 'critical'
     ) {
 
       priorityEl.classList.add(
-        "badge-red"
+        'badge-red'
       );
 
-    }
-
-    else if (
-      prioLower ===
-      "high"
+    } else if (
+      prioLower === 'high'
     ) {
 
       priorityEl.classList.add(
-        "badge-orange"
+        'badge-orange'
       );
 
-    }
-
-    else if (
-      prioLower ===
-      "medium"
+    } else if (
+      prioLower === 'medium'
     ) {
 
       priorityEl.classList.add(
-        "badge-blue"
+        'badge-blue'
       );
 
-    }
-
-    else {
+    } else {
 
       priorityEl.classList.add(
-        "badge-gray"
+        'badge-gray'
       );
 
     }
-
   }
 
 
-  /*
-   * Status
-   */
+  /* Status */
+
   updateStatusBadge(
     complaint.status
   );
 
 
-  /*
-   * Workflow
-   */
+  /* Workflow */
+
   updateWorkflow(
     complaint.status
   );
 
 
-  /*
-   * Active action button
-   */
+  /* Active button */
+
   highlightActionButton(
     complaint.status
   );
 
 
-  /* ==========================================================
-     PHOTO EVIDENCE FIX
-     ========================================================== */
-
+  /* Photo */
 
   const photoWrapper =
     document.getElementById(
-      "authority-photo-wrapper"
+      'authority-photo-wrapper'
     );
-
 
   const photoEmpty =
     document.getElementById(
-      "authority-photo-empty"
+      'authority-photo-empty'
     );
-
 
   const geotagImg =
     document.getElementById(
-      "authority-geotag-image"
+      'authority-geotag-image'
     );
 
 
-  /*
-   * Try both:
-   *
-   * 1. complaint.photo
-   * 2. civicComplaintPhoto
-   */
   const photoData =
     complaint.photo ||
     localStorage.getItem(
-      "civicComplaintPhoto"
+      'civicComplaintPhoto'
     );
 
 
-  /*
-   * PHOTO EXISTS
-   */
   if (
     photoData &&
     photoWrapper &&
@@ -2164,78 +1959,49 @@ function loadAuthorityComplaint() {
       geotagImg.src =
         photoData;
 
-
-      geotagImg.alt =
-        complaint.photoName
-          ? `Complaint evidence: ${complaint.photoName}`
-          : "Geotagged Photo Evidence";
-
-
-      /*
-       * If image fails to load,
-       * show empty state.
-       */
-      geotagImg.onerror =
-        () => {
-
-          photoWrapper.classList.add(
-            "hidden"
-          );
-
-          photoEmpty.classList.remove(
-            "hidden"
-          );
-
-        };
-
     }
 
 
     photoWrapper.classList.remove(
-      "hidden"
+      'hidden'
     );
 
 
     photoEmpty.classList.add(
-      "hidden"
+      'hidden'
     );
 
-  }
 
-
-  /*
-   * NO PHOTO
-   */
-  else if (
+  } else if (
     photoWrapper &&
     photoEmpty
   ) {
 
     photoWrapper.classList.add(
-      "hidden"
+      'hidden'
     );
+
 
     photoEmpty.classList.remove(
-      "hidden"
+      'hidden'
     );
-
   }
-
 }
 
 
-/* ==========================================================================
-   8. STATUS BADGE
-   ========================================================================== */
+/* ================================================================
+   15. AUTHORITY STATUS BADGE
+   ================================================================ */
 
 
-function updateStatusBadge(
-  status
-) {
+/**
+ * Update authority status badge.
+ */
+function updateStatusBadge(status) {
 
   const statusEl =
     document.getElementById(
-      "authority-status"
+      'authority-status'
     );
 
 
@@ -2245,7 +2011,7 @@ function updateStatusBadge(
 
 
   statusEl.className =
-    "badge";
+    'badge';
 
 
   statusEl.textContent =
@@ -2253,71 +2019,60 @@ function updateStatusBadge(
 
 
   if (
-    status ===
-    "Assigned"
+    status === 'Assigned'
   ) {
 
     statusEl.classList.add(
-      "badge-blue"
+      'badge-blue'
     );
 
-  }
-
-  else if (
-    status ===
-    "In Progress"
+  } else if (
+    status === 'In Progress'
   ) {
 
     statusEl.classList.add(
-      "badge-orange"
+      'badge-orange'
     );
 
-  }
-
-  else if (
-    status ===
-    "Resolved"
+  } else if (
+    status === 'Resolved'
   ) {
 
     statusEl.classList.add(
-      "badge-green"
+      'badge-green'
     );
-
   }
-
 }
 
 
-/* ==========================================================================
-   9. WORKFLOW
-   ========================================================================== */
+/* ================================================================
+   16. WORKFLOW
+   ================================================================ */
 
 
-function updateWorkflow(
-  status
-) {
+/**
+ * Update authority workflow.
+ */
+function updateWorkflow(status) {
 
   const stepAssigned =
     document.getElementById(
-      "step-assigned"
+      'step-assigned'
     );
-
 
   const stepInProgress =
     document.getElementById(
-      "step-in-progress"
+      'step-in-progress'
     );
-
 
   const stepResolved =
     document.getElementById(
-      "step-resolved"
+      'step-resolved'
     );
-
 
   const progressBar =
     document.getElementById(
-      "workflow-progress-line"
+      'workflow-progress-line'
     );
 
 
@@ -2326,12 +2081,12 @@ function updateWorkflow(
     stepInProgress,
     stepResolved
   ].forEach(
-    (node) => {
+    node => {
 
       if (node) {
 
         node.className =
-          "workflow-node";
+          'workflow-node';
 
       }
 
@@ -2340,14 +2095,13 @@ function updateWorkflow(
 
 
   if (
-    status ===
-    "Assigned"
+    status === 'Assigned'
   ) {
 
     if (stepAssigned) {
 
       stepAssigned.classList.add(
-        "active"
+        'active'
       );
 
     }
@@ -2356,25 +2110,22 @@ function updateWorkflow(
     if (progressBar) {
 
       progressBar.style.width =
-        "0%";
+        '0%';
 
       progressBar.style.height =
-        "0%";
+        '0%';
 
     }
 
-  }
 
-
-  else if (
-    status ===
-    "In Progress"
+  } else if (
+    status === 'In Progress'
   ) {
 
     if (stepAssigned) {
 
       stepAssigned.classList.add(
-        "completed"
+        'completed'
       );
 
     }
@@ -2383,8 +2134,8 @@ function updateWorkflow(
     if (stepInProgress) {
 
       stepInProgress.classList.add(
-        "in-progress-state",
-        "active"
+        'in-progress-state',
+        'active'
       );
 
     }
@@ -2393,25 +2144,22 @@ function updateWorkflow(
     if (progressBar) {
 
       progressBar.style.width =
-        "50%";
+        '50%';
 
       progressBar.style.height =
-        "50%";
+        '50%';
 
     }
 
-  }
 
-
-  else if (
-    status ===
-    "Resolved"
+  } else if (
+    status === 'Resolved'
   ) {
 
     if (stepAssigned) {
 
       stepAssigned.classList.add(
-        "completed"
+        'completed'
       );
 
     }
@@ -2420,7 +2168,7 @@ function updateWorkflow(
     if (stepInProgress) {
 
       stepInProgress.classList.add(
-        "completed"
+        'completed'
       );
 
     }
@@ -2429,8 +2177,8 @@ function updateWorkflow(
     if (stepResolved) {
 
       stepResolved.classList.add(
-        "resolved-state",
-        "active"
+        'resolved-state',
+        'active'
       );
 
     }
@@ -2439,64 +2187,66 @@ function updateWorkflow(
     if (progressBar) {
 
       progressBar.style.width =
-        "100%";
+        '100%';
 
       progressBar.style.height =
-        "100%";
+        '100%';
 
     }
-
   }
-
 }
 
 
-/* ==========================================================================
-   10. AUTHORITY ACTION BUTTON
-   ========================================================================== */
+/* ================================================================
+   17. AUTHORITY BUTTON HIGHLIGHT
+   ================================================================ */
 
 
+/**
+ * Highlight selected status button.
+ */
 function highlightActionButton(
   status
 ) {
 
   const buttons =
     document.querySelectorAll(
-      ".btn-status-action"
+      '.btn-status-action'
     );
 
 
   buttons.forEach(
-    (btn) => {
+    btn => {
 
       if (
         btn.getAttribute(
-          "data-status"
+          'data-status'
         ) === status
       ) {
 
         btn.classList.add(
-          "btn-active"
+          'btn-active'
         );
 
-      }
-
-      else {
+      } else {
 
         btn.classList.remove(
-          "btn-active"
+          'btn-active'
         );
-
       }
 
     }
   );
-
 }
 
 
+/* ================================================================
+   18. AUTHORITY STATUS UPDATE
+   ================================================================ */
+
+
 /**
- * Update complaint status
+ * Update complaint status.
  */
 function updateComplaintStatus(
   newStatus
@@ -2507,6 +2257,11 @@ function updateComplaintStatus(
 
 
   if (!complaint) {
+
+    showAuthorityToast(
+      'No complaint record found.'
+    );
+
     return;
   }
 
@@ -2515,11 +2270,6 @@ function updateComplaintStatus(
     newStatus;
 
 
-  /*
-   * IMPORTANT:
-   * saveComplaint() automatically
-   * preserves the existing photo.
-   */
   const saved =
     saveComplaint(
       complaint
@@ -2529,15 +2279,17 @@ function updateComplaintStatus(
   if (!saved) {
 
     showAuthorityToast(
-      "Unable to update complaint."
+      'Unable to save status update.'
     );
 
     return;
   }
 
 
+  /* Update UI */
+
   setText(
-    "authority-status",
+    'authority-status',
     newStatus
   );
 
@@ -2560,40 +2312,49 @@ function updateComplaintStatus(
   showAuthorityToast(
     `Complaint status updated to ${newStatus}.`
   );
-
 }
 
 
-/* ==========================================================================
-   11. RESET / LOGOUT
-   ========================================================================== */
+/* ================================================================
+   19. DEMO SESSION RESET
+   ================================================================ */
 
 
+/**
+ * Reset demo session.
+ *
+ * Clears:
+ * - Login
+ * - User
+ * - Complaint
+ * - Photo
+ */
 function resetDemoSession() {
 
   localStorage.removeItem(
-    "civicLoggedIn"
+    'civicLoggedIn'
   );
 
-
   localStorage.removeItem(
-    "civicComplaint"
+    'civicUser'
   );
 
-
   localStorage.removeItem(
-    "civicComplaintPhoto"
+    'civicComplaint'
   );
 
+  localStorage.removeItem(
+    'civicComplaintPhoto'
+  );
 
   localStorage.removeItem(
-    "civicComplaintPhotoName"
+    'civicComplaintPhotoName'
   );
 
 
   showPageLoader(
-    "Ending Session...",
-    "Returning to registration portal..."
+    'Ending Session...',
+    'Returning to CivicConnect registration...'
   );
 
 
@@ -2601,40 +2362,40 @@ function resetDemoSession() {
     () => {
 
       window.location.href =
-        "register.html";
+        'register.html';
 
     },
     600
   );
-
 }
 
 
-/* ==========================================================================
-   12. PAGE INITIALIZATION
-   ========================================================================== */
+/* ================================================================
+   20. PAGE INITIALIZATION
+   ================================================================ */
 
 
 document.addEventListener(
-  "DOMContentLoaded",
+  'DOMContentLoaded',
   () => {
 
+    /* ------------------------------------------------------------
+       Detect authority page
+       ------------------------------------------------------------ */
 
-    /*
-     * Detect authority page
-     */
     const isAuthorityPage =
-      window.location.pathname.includes(
-        "authority.html"
-      ) ||
+      window.location.pathname
+        .toLowerCase()
+        .includes('authority.html') ||
       document.body.classList.contains(
-        "authority-page"
+        'authority-page'
       );
 
 
-    /*
-     * Authority page
-     */
+    /* ------------------------------------------------------------
+       Authority page
+       ------------------------------------------------------------ */
+
     if (isAuthorityPage) {
 
       const hasAccess =
@@ -2650,60 +2411,57 @@ document.addEventListener(
           hidePageLoader,
           400
         );
-
       }
 
-    }
+    } else {
 
-
-    /*
-     * Normal pages
-     */
-    else {
+      /* Normal pages */
 
       setTimeout(
         hidePageLoader,
         400
       );
-
     }
 
 
-    /*
-     * Register form
-     */
+    /* ------------------------------------------------------------
+       Register form
+       ------------------------------------------------------------ */
+
     const registerForm =
       document.getElementById(
-        "register-form"
+        'register-form'
       );
 
 
     if (registerForm) {
 
       registerForm.addEventListener(
-        "submit",
+        'submit',
         registerUser
       );
-
     }
 
 
-    /*
-     * Login form
-     */
+    /* ------------------------------------------------------------
+       Login form
+       ------------------------------------------------------------ */
+
     const loginForm =
       document.getElementById(
-        "login-form"
+        'login-form'
       );
 
 
     if (loginForm) {
 
       loginForm.addEventListener(
-        "submit",
+        'submit',
         loginUser
       );
 
+
+      /* Auto-fill email */
 
       const currentUser =
         getUser();
@@ -2711,7 +2469,7 @@ document.addEventListener(
 
       const loginEmailInput =
         document.getElementById(
-          "login-email"
+          'login-email'
         );
 
 
@@ -2723,28 +2481,29 @@ document.addEventListener(
 
         loginEmailInput.value =
           currentUser.email;
-
       }
-
     }
 
 
-    /*
-     * Complaint form
-     */
+    /* ------------------------------------------------------------
+       Complaint form
+       ------------------------------------------------------------ */
+
     const complaintForm =
       document.getElementById(
-        "complaint-form"
+        'complaint-form'
       );
 
 
     if (complaintForm) {
 
+      /* Require login */
+
       if (!isLoggedIn()) {
 
         showPageLoader(
-          "Citizen Access Required",
-          "Redirecting to login portal..."
+          'Citizen Access Required',
+          'Redirecting to login portal...'
         );
 
 
@@ -2752,7 +2511,7 @@ document.addEventListener(
           () => {
 
             window.location.href =
-              "login.html";
+              'login.html';
 
           },
           700
@@ -2760,40 +2519,43 @@ document.addEventListener(
 
 
         return;
-
       }
 
 
+      /* Attach complaint submit */
+
       complaintForm.addEventListener(
-        "submit",
+        'submit',
         submitComplaint
       );
 
 
-      initGeotagPhotoSection();
+      /* Photo system */
 
+      initGeotagPhotoSection();
     }
 
 
-    /*
-     * Authority status buttons
-     */
+    /* ------------------------------------------------------------
+       Authority status buttons
+       ------------------------------------------------------------ */
+
     const actionButtons =
       document.querySelectorAll(
-        ".btn-status-action"
+        '.btn-status-action'
       );
 
 
     actionButtons.forEach(
-      (btn) => {
+      btn => {
 
         btn.addEventListener(
-          "click",
+          'click',
           () => {
 
             const status =
               btn.getAttribute(
-                "data-status"
+                'data-status'
               );
 
 
@@ -2802,7 +2564,6 @@ document.addEventListener(
               updateComplaintStatus(
                 status
               );
-
             }
 
           }
@@ -2812,20 +2573,21 @@ document.addEventListener(
     );
 
 
-    /*
-     * Logout buttons
-     */
+    /* ------------------------------------------------------------
+       Logout / reset buttons
+       ------------------------------------------------------------ */
+
     const logoutButtons =
       document.querySelectorAll(
-        ".btn-logout-demo"
+        '.btn-logout-demo'
       );
 
 
     logoutButtons.forEach(
-      (btn) => {
+      btn => {
 
         btn.addEventListener(
-          "click",
+          'click',
           (e) => {
 
             e.preventDefault();
