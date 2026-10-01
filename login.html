@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicConnect - Citizen Login</title>
+  <meta name="description" content="Secure Citizen Login to the CivicConnect Public Grievance Portal.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="civic-bg">
+
+  <!-- Fullscreen CivicConnect Loading Overlay -->
+  <div id="page-loader">
+    <div class="loader-card">
+      <div class="loader-logo-wrapper">
+        <div class="loader-logo">CC</div>
+      </div>
+      <div class="loader-spinner"></div>
+      <div id="loader-title" class="loader-title">Loading CivicConnect...</div>
+      <div id="loader-subtitle" class="loader-subtitle">Secure Public Grievance Portal</div>
+    </div>
+  </div>
+
+  <main class="auth-page-wrapper">
+    <div class="auth-split-card">
+      
+      <!-- Left Panel: Dark Navy CivicConnect Branding Panel -->
+      <section class="auth-left-panel" aria-label="CivicConnect Platform Information">
+        <!-- Abstract Civic Network Vector -->
+        <svg class="network-graphic" viewBox="0 0 300 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="180" r="6" fill="#3B82F6" fill-opacity="0.8" />
+          <circle cx="120" cy="110" r="5" fill="#60A5FA" fill-opacity="0.6" />
+          <circle cx="200" cy="160" r="7" fill="#2563EB" fill-opacity="0.9" />
+          <circle cx="260" cy="60" r="6" fill="#93C5FD" fill-opacity="0.7" />
+          <circle cx="150" cy="40" r="4" fill="#60A5FA" fill-opacity="0.5" />
+          <line x1="40" y1="180" x2="120" y2="110" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="3 3" />
+          <line x1="120" y1="110" x2="200" y2="160" stroke="#3B82F6" stroke-width="1.5" />
+          <line x1="200" y1="160" x2="260" y2="60" stroke="#60A5FA" stroke-width="1.5" stroke-dasharray="4 4" />
+          <line x1="120" y1="110" x2="150" y2="40" stroke="#93C5FD" stroke-width="1" />
+          <line x1="150" y1="40" x2="260" y2="60" stroke="#3B82F6" stroke-width="1.5" />
+        </svg>
+
+        <div class="brand-section-left">
+          <div class="brand-header-left">
+            <div class="cc-logo">CC</div>
+            <span class="logo-text">CivicConnect</span>
+          </div>
+
+          <div class="tagline-badge">Your Voice. Your City.</div>
+
+          <p class="platform-summary">
+            A transparent, fast, and accountable civic grievance management platform connecting citizens directly with municipal authorities.
+          </p>
+
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="feature-icon-badge">✓</span>
+              <span>Report civic issues easily</span>
+            </li>
+            <li class="feature-item">
+              <span class="feature-icon-badge">✓</span>
+              <span>Track complaint progress</span>
+            </li>
+            <li class="feature-item">
+              <span class="feature-icon-badge">✓</span>
+              <span>Secure citizen information</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="left-panel-footer">
+          <span class="status-dot"></span>
+          <span>End-to-End Encrypted Session • GovTech Standards</span>
+        </div>
+      </section>
+
+      <!-- Right Panel: Clean White Login Card -->
+      <section class="auth-right-panel" aria-label="Citizen Login Form">
+        <!-- Mobile Logo Header (Hidden on Desktop) -->
+        <div class="mobile-brand-header">
+          <div class="cc-logo">CC</div>
+          <div>
+            <div class="brand-title">CivicConnect</div>
+            <div class="brand-subtitle">Your Voice. Your City.</div>
+          </div>
+        </div>
+
+        <div class="auth-header-text">
+          <h1 class="auth-heading">Citizen Sign In</h1>
+          <p class="auth-subheading">Access your civic dashboard to report issues and review ongoing resolutions.</p>
+        </div>
+
+        <!-- Alert Notification Box -->
+        <div id="login-alert" class="alert-box hidden" role="alert"></div>
+
+        <form id="login-form" novalidate>
+          <div class="form-grid">
+            
+            <!-- Email Address -->
+            <div class="form-group col-span-2">
+              <label for="login-email" class="form-label">
+                <span>Registered Email Address</span>
+              </label>
+              <div class="input-wrapper">
+                <input 
+                  type="email" 
+                  id="login-email" 
+                  name="email" 
+                  class="form-control" 
+                  placeholder="e.g. citizen@example.gov.in" 
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group col-span-2">
+              <label for="login-password" class="form-label">
+                <span>Password</span>
+              </label>
+              <div class="input-wrapper">
+                <input 
+                  type="password" 
+                  id="login-password" 
+                  name="password" 
+                  class="form-control" 
+                  placeholder="••••••••" 
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-group col-span-2" style="margin-top: 8px;">
+              <button type="submit" id="btn-login" class="btn btn-primary btn-full">
+                <span>Sign In to Citizen Portal</span>
+                <span>→</span>
+              </button>
+            </div>
+
+          </div>
+        </form>
+
+        <div class="auth-footer">
+          Don't have a registered account? <a href="register.html">Register here</a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

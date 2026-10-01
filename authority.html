@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicConnect - Authority Control Room</title>
+  <meta name="description" content="Municipal Authority Control Room for Civic Grievance Management and Resolution Dispatch.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="civic-bg authority-page">
+
+  <!-- Fullscreen CivicConnect Loading Overlay -->
+  <div id="page-loader">
+    <div class="loader-card">
+      <div class="loader-logo-wrapper">
+        <div class="loader-logo">CC</div>
+      </div>
+      <div class="loader-spinner"></div>
+      <div id="loader-title" class="loader-title">Loading CivicConnect...</div>
+      <div id="loader-subtitle" class="loader-subtitle">Secure Public Grievance Portal</div>
+    </div>
+  </div>
+
+  <!-- Authority Header / Navigation Bar -->
+  <header class="main-navbar authority-navbar">
+    <div class="brand-wrapper">
+      <div class="cc-logo">CC</div>
+      <div class="brand-info">
+        <span class="brand-title">CivicConnect</span>
+        <span class="brand-subtitle">Authority Control Room</span>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <div class="access-badge authority-badge">
+        <span class="pulse-dot"></span>
+        <span>Authorized Access</span>
+      </div>
+      <a href="complaint.html" class="btn-nav-outline" title="Return to Citizen Portal">
+        <span>Citizen Portal</span>
+      </a>
+      <button type="button" class="btn-nav-outline btn-logout-demo" title="Exit Presentation Session">
+        <span>Exit Session</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Authority Dashboard Container -->
+  <main class="dashboard-container">
+    
+    <div class="authority-layout">
+      
+      <!-- Top Title Section -->
+      <div class="dashboard-header" style="margin-bottom: 0;">
+        <h1 class="dashboard-title">Complaint Management</h1>
+        <p class="dashboard-desc">Operational dashboard for monitoring, processing, and updating civic grievance status.</p>
+      </div>
+
+      <!-- Privacy Protected Banner -->
+      <section class="authority-privacy-banner" aria-label="Privacy Protection Notice">
+        <div class="privacy-banner-left">
+          <div class="privacy-icon-pill">🔒</div>
+          <div>
+            <h2 class="privacy-banner-title">Citizen Privacy Protected</h2>
+            <p class="privacy-banner-desc">Personal citizen information is not displayed on this authority interface.</p>
+          </div>
+        </div>
+        <div class="privacy-shield-tag">
+          PII Redacted • Identity Protected
+        </div>
+      </section>
+
+      <!-- Main Operational Complaint Card -->
+      <section class="authority-main-card" aria-label="Active Grievance Details">
+        
+        <!-- Metadata Overview Bar -->
+        <div class="complaint-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Complaint ID</span>
+            <span id="authority-complaint-id" class="meta-value mono">Loading...</span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Category</span>
+            <span id="authority-category" class="meta-value">Loading...</span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Priority</span>
+            <div>
+              <span id="authority-priority" class="badge">Loading...</span>
+            </div>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Current Status</span>
+            <div>
+              <span id="authority-status" class="badge">Assigned</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Issue Description & Location Details -->
+        <div class="complaint-body-section">
+          
+          <div class="detail-block">
+            <span class="detail-heading">Complaint Title</span>
+            <div id="authority-title" class="complaint-title-display">Loading...</div>
+          </div>
+
+          <div class="detail-block">
+            <span class="detail-heading">Detailed Description</span>
+            <div id="authority-description" class="complaint-description-display">Loading...</div>
+          </div>
+
+          <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+            <div class="detail-block">
+              <span class="detail-heading">Geo-Location / Landmark</span>
+              <div class="location-display">
+                <span class="location-pin-icon">📍</span>
+                <span id="authority-location">Loading...</span>
+              </div>
+            </div>
+
+            <div class="detail-block">
+              <span class="detail-heading">Submission Timestamp</span>
+              <div style="font-size: 0.92rem; font-weight: 600; color: #475569; padding-top: 6px;">
+                <span id="authority-submitted-at">Loading...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Complaint Evidence Section -->
+          <div class="authority-photo-section">
+            <span class="detail-heading">📸 Complaint Evidence</span>
+            <div id="authority-photo-container">
+              <div id="authority-photo-empty" class="authority-photo-empty">
+                <span>📷</span>
+                <span>No photographic evidence attached to this grievance record.</span>
+              </div>
+              <div id="authority-photo-wrapper" class="authority-clean-photo-card hidden">
+                <div class="photo-info-bar">
+                  <span class="photo-status-icon">✓</span>
+                  <span>Geotagged Photo Evidence</span>
+                </div>
+                <img id="authority-geotag-image" src="" alt="Geotagged Photo Evidence" class="clean-preview-img">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Visual Connected Workflow Timeline -->
+        <div class="workflow-section">
+          <div class="workflow-header">
+            <span class="workflow-title">Grievance Lifecycle Workflow</span>
+            <span class="workflow-status-live">Real-time status progression</span>
+          </div>
+
+          <div class="workflow-track">
+            <!-- Background connecting line -->
+            <div class="workflow-line-bg"></div>
+            <!-- Active progress filled line -->
+            <div id="workflow-progress-line" class="workflow-line-progress"></div>
+
+            <!-- Step 1: Assigned -->
+            <div id="step-assigned" class="workflow-node active">
+              <div class="node-circle">01</div>
+              <div class="node-label">Assigned</div>
+            </div>
+
+            <!-- Step 2: In Progress -->
+            <div id="step-in-progress" class="workflow-node">
+              <div class="node-circle">02</div>
+              <div class="node-label">In Progress</div>
+            </div>
+
+            <!-- Step 3: Resolved -->
+            <div id="step-resolved" class="workflow-node">
+              <div class="node-circle">03</div>
+              <div class="node-label">Resolved</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Authority Action Controls -->
+        <div class="authority-actions-panel">
+          <div class="actions-header">Update Grievance Status</div>
+          <div class="action-buttons-group">
+            <button type="button" class="btn-status-action" data-status="Assigned">
+              <span>●</span>
+              <span>[ Assigned ]</span>
+            </button>
+            <button type="button" class="btn-status-action" data-status="In Progress">
+              <span>⚙</span>
+              <span>[ In Progress ]</span>
+            </button>
+            <button type="button" class="btn-status-action" data-status="Resolved">
+              <span>✓</span>
+              <span>[ Resolved ]</span>
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

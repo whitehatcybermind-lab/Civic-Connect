@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicConnect - Citizen Portal</title>
+  <meta name="description" content="Report civic issues directly to municipal authorities on CivicConnect.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="civic-bg">
+
+  <!-- Fullscreen CivicConnect Loading Overlay -->
+  <div id="page-loader">
+    <div class="loader-card">
+      <div class="loader-logo-wrapper">
+        <div class="loader-logo">CC</div>
+      </div>
+      <div class="loader-spinner"></div>
+      <div id="loader-title" class="loader-title">Loading CivicConnect...</div>
+      <div id="loader-subtitle" class="loader-subtitle">Secure Public Grievance Portal</div>
+    </div>
+  </div>
+
+  <!-- Top Navigation Bar -->
+  <header class="main-navbar">
+    <div class="brand-wrapper">
+      <div class="cc-logo">CC</div>
+      <div class="brand-info">
+        <span class="brand-title">CivicConnect</span>
+        <span class="brand-subtitle">Citizen Portal</span>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <div class="access-badge citizen-badge">
+        <span class="pulse-dot"></span>
+        <span>Secure Citizen Access</span>
+      </div>
+      <button type="button" class="btn-nav-outline btn-logout-demo" title="Reset Demo / Log Out">
+        <span>Exit Session</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Dashboard -->
+  <main class="dashboard-container">
+    <div class="dashboard-header">
+      <h1 class="dashboard-title">Report a Civic Issue</h1>
+      <p class="dashboard-desc">Help improve your community by reporting an issue to the responsible authority.</p>
+    </div>
+
+    <div class="dashboard-grid">
+      
+      <!-- Left Column: Citizen Complaint Submission Card -->
+      <section class="content-card" aria-label="Complaint Submission Form">
+        <div class="card-header-with-icon">
+          <div class="icon-square-blue">+</div>
+          <div>
+            <h2 class="card-title-lg">Submit Complaint</h2>
+            <p class="card-subtitle-sm">Provide accurate grievance details for rapid municipal resolution.</p>
+          </div>
+        </div>
+
+        <!-- Alert Notification Box -->
+        <div id="complaint-alert" class="alert-box hidden" role="alert"></div>
+
+        <form id="complaint-form" novalidate>
+          <div class="form-grid">
+            
+            <!-- Category Dropdown -->
+            <div class="form-group">
+              <label for="complaint-category" class="form-label">
+                <span>Category *</span>
+              </label>
+              <select id="complaint-category" name="category" class="form-control" required>
+                <option value="" disabled selected>Select issue category...</option>
+                <option value="Road">Road</option>
+                <option value="Streetlight">Streetlight</option>
+                <option value="Water">Water</option>
+                <option value="Drainage">Drainage</option>
+                <option value="Garbage">Garbage</option>
+                <option value="Electricity">Electricity</option>
+                <option value="Sanitation">Sanitation</option>
+                <option value="Traffic">Traffic</option>
+                <option value="Public Safety">Public Safety</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <!-- Priority Dropdown -->
+            <div class="form-group">
+              <label for="complaint-priority" class="form-label">
+                <span>Priority Level</span>
+              </label>
+              <select id="complaint-priority" name="priority" class="form-control">
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+
+            <!-- Complaint Title -->
+            <div class="form-group col-span-2">
+              <label for="complaint-title" class="form-label">
+                <span>Complaint Title *</span>
+                <span class="form-hint">Min. 5 characters</span>
+              </label>
+              <input 
+                type="text" 
+                id="complaint-title" 
+                name="title" 
+                class="form-control" 
+                placeholder="e.g. Broken water pipeline causing road waterlogging" 
+                required
+              >
+            </div>
+
+            <!-- Description Textarea -->
+            <div class="form-group col-span-2">
+              <label for="complaint-description" class="form-label">
+                <span>Description *</span>
+                <span class="form-hint">Min. 10 characters</span>
+              </label>
+              <textarea 
+                id="complaint-description" 
+                name="description" 
+                class="form-control" 
+                placeholder="Provide detailed description of the problem, nearest landmarks, and impact on local residents..."
+                rows="4" 
+                required
+              ></textarea>
+            </div>
+
+            <!-- Location -->
+            <div class="form-group col-span-2">
+              <label for="complaint-location" class="form-label">
+                <span>Location *</span>
+                <span class="form-hint">Street, Sector, or Landmark</span>
+              </label>
+              <input 
+                type="text" 
+                id="complaint-location" 
+                name="location" 
+                class="form-control" 
+                placeholder="e.g. Near Shiv Mandir, Main Market Road, Ward 12" 
+                required
+              >
+            </div>
+
+            <!-- Mandatory Geotagged Photo Evidence Section -->
+            <div class="form-group col-span-2">
+              <label class="form-label" for="complaint-photo-input">
+                <span>📍 Geotagged Photo Evidence *</span>
+                <span class="form-hint" style="color: var(--danger); font-weight: 600;">Compulsory Evidence</span>
+              </label>
+              
+              <div class="geotag-container">
+                <!-- Upload Dropzone / Trigger -->
+                <div id="geotag-dropzone" class="geotag-upload-zone">
+                  <div class="geotag-icon-badge">📷</div>
+                  <div class="geotag-title">Upload Geotagged Photo Evidence</div>
+                  <p class="geotag-subtitle">Attach a photo clicked using any camera or geotag application (such as GPS Map Camera, Timestamp camera, or any preferred photo app).</p>
+                  
+                  <div class="geotag-actions-row">
+                    <button type="button" id="btn-browse-photo" class="btn btn-primary" style="padding: 10px 22px; font-size: 0.92rem;">
+                      <span>📷 Upload Photo</span>
+                    </button>
+                    <button type="button" id="btn-sample-photo" class="btn-upload-action btn-accent">
+                      <span>⚡ Use Demo Field Photo</span>
+                    </button>
+                  </div>
+                  <!-- Hidden File Input -->
+                  <input type="file" id="complaint-photo-input" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- Clean Photo Preview Card (No Embedded Overlays) -->
+                <div id="geotag-preview-card" class="photo-preview-card hidden">
+                  <div class="preview-img-container">
+                    <img id="geotag-image-preview" src="" alt="Uploaded Geotagged Evidence Photo" class="clean-preview-img">
+                  </div>
+                  <div class="photo-preview-footer">
+                    <div class="photo-file-status">
+                      <span class="photo-status-icon">✓</span>
+                      <span id="photo-filename-label" class="photo-filename-text">evidence_photo.jpg</span>
+                    </div>
+                    <div class="preview-action-buttons">
+                      <button type="button" id="btn-replace-photo" class="btn-replace-photo">🔄 Replace</button>
+                      <button type="button" id="btn-remove-photo" class="btn-remove-photo">✕ Remove</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-group col-span-2" style="margin-top: 10px;">
+              <button type="submit" id="btn-submit-complaint" class="btn btn-primary btn-full">
+                <span>Submit Complaint</span>
+                <span>→</span>
+              </button>
+            </div>
+
+          </div>
+        </form>
+      </section>
+
+      <!-- Right Column: What Happens Next & Privacy Assurance -->
+      <aside class="sidebar-card" aria-label="Process Workflow Information">
+        <h3 class="sidebar-title">What happens next?</h3>
+
+        <div class="step-roadmap">
+          <div class="step-item">
+            <div class="step-number">01</div>
+            <div>
+              <div class="step-content-title">Complaint Submitted</div>
+              <div class="step-content-desc">Your complaint is registered with a unique tamper-proof ID (e.g. CC-2026-XXXXX).</div>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-number">02</div>
+            <div>
+              <div class="step-content-title">Authority Assigned</div>
+              <div class="step-content-desc">Routed immediately to the designated municipal department and field officer.</div>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-number">03</div>
+            <div>
+              <div class="step-content-title">Resolution</div>
+              <div class="step-content-desc">Field inspection, municipal corrective action, and final status closure.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy Box -->
+        <div class="privacy-badge-box">
+          <div class="privacy-badge-header">
+            <span class="privacy-badge-icon">🔒</span>
+            <span>Citizen Privacy Protected</span>
+          </div>
+          <p class="privacy-badge-desc">
+            Your personal contact details and Aadhaar number are strictly shielded. Municipal authorities only receive the issue description, category, and location needed for on-ground resolution.
+          </p>
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
